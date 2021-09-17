@@ -1,0 +1,7 @@
+<Layer
+    Type="Quad" OnCommand="diffusealpha,0"
+    InitCommand="%melody(function(self)
+        if self:getaux()==1 then return end; self:aux(1); -- initcommand bs
+        
+    end)"
+/>

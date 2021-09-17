@@ -1,0 +1,114 @@
+<Layer
+    Type="Quad" OnCommand="hidden,1"
+    InitCommand="%melody(function(self)
+        if self:getaux()==1 then return end; self:aux(1); -- initcommand bs
+
+        local is_divinentity = false
+        if config.minimum_build == 'OpenITG' then
+            local div = {
+                GAMESTATE:PlayerIsUsingModifier(0, 'divinentity'),
+                GAMESTATE:PlayerIsUsingModifier(1, 'divinentity')
+            }
+            is_divinentity = div[1] or div[2]
+
+            if not is_divinentity then
+                print('[Judgment]','<Error>','Judgment handler only works on NotITG or OpenITG with DivinEntity!')
+                return
+            end
+        end
+
+        local hooks = {}
+        local disabled = false
+        judgment_handler = setmetatable(
+            {
+                TYPE_COLUMN = 0,
+                TYPE_GLOBAL = 1,
+                TYPE_NOTEFIELD = 2,
+
+                ['Fantastic'] = 1,
+                ['Excellent'] = 2,
+                ['Great'] = 3,
+                ['Decent'] = 4,
+                ['Way Off'] = 5,
+                ['Miss'] = 6,
+                ['Mine'] = 8,
+
+                --
+
+                Hook = function(self, enum_type, id, func)
+                    hooks[ enum_type ][ id ] = func
+                end,
+                Remove = function(self, enum_type, id)
+                    hooks[ enum_type ][ id ] = nil
+                end,
+
+                Disable = function(self, disable) disabled = disable end,
+            },
+            {
+                __newindex = function() end
+            }
+        )
+        hooks = {
+            [ judgment_handler.TYPE_COLUMN ] = {},
+            [ judgment_handler.TYPE_GLOBAL ] = {},
+            [ judgment_handler.TYPE_NOTEFIELD ] = {},
+        }
+
+        do
+            local function broadcast( jud_type, ... )
+                if disabled then return end
+                for id, func in pairs( hooks[ jud_type ] ) do
+                    func( unpack(arg) )
+                end
+            end
+            
+            local jud_guide = {'Fantastic','Excellent','Great','Decent','WayOff','Miss','HitMine'}
+            for _pn=1,2 do
+                local pn = _pn
+
+                if is_divinentity then
+                    for i,_w in pairs( jud_guide ) do
+                        local w = _w
+                        self:addcommand('P'..pn..w..'Message', function()
+                            broadcast( judgment_handler.TYPE_GLOBAL, w, pn )
+                        end)
+                    end
+                else
+                    for _jud=1,8 do
+                        if _jud ~= 7 then
+                            local jud = _jud
+                            local _col=0,3 do
+                                local col = _col
+                                self:addcommand('Fk_P'..pn..'_'..col..'_W'..jud..'Message',function()
+                                    broadcast( judgment_handler.TYPE_COLUMN, jud_guide[jud], col, pn )
+                                end)
+                            end
+
+                            self:addcommand('Fk_P'..pn..'_W'..jud..'Message',function()
+                                broadcast( judgment_handler.TYPE_GLOBAL, jud_guide[jud], pn )
+                            end)
+
+                            for i,_w in pairs({'Early','Late','Hold','Roll'}) do
+                                local w = _w
+                                self:addcommand('Fk_P'..pn..'_W'..jud..'_'..w..'Message',function()
+                                    broadcast( judgment_handler.TYPE_NOTEFIELD, jud_guide[jud], w, pn )
+                                end)
+                            end
+                        end
+                    end
+
+                    for i,_w in pairs({'Early','Late','Hold','Roll'}) do
+                        local w = _w
+                        self:addcommand('Fk_P'..pn..'_OK_'..w..'Message',function()
+                            broadcast( judgment_handler.TYPE_NOTEFIELD, 'OK', w, pn )
+                        end)
+                        self:addcommand('Fk_P'..pn..'_NG_'..w..'Message',function()
+                            broadcast( judgment_handler.TYPE_NOTEFIELD, 'NG', w, pn )
+                        end)
+                    end
+                end
+            end
+        end
+
+    end)"
+/>,
