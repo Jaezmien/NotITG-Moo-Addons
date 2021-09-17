@@ -38,17 +38,17 @@ local asin = math.asin
 -- Tweener's easing functions
 
 
-_G.linear = function(t, b, c, d) return c * t / d + b end
+linear = function(t, b, c, d) return c * t / d + b end
 
-_G.inQuad = function(t, b, c, d)
+inQuad = function(t, b, c, d)
     t = t / d
     return c * pow(t, 2) + b
 end
-_G.outQuad = function(t, b, c, d)
+outQuad = function(t, b, c, d)
     t = t / d
     return -c * t * (t - 2) + b
 end
-_G.inOutQuad = function(t, b, c, d)
+inOutQuad = function(t, b, c, d)
     t = t / d * 2
     if t < 1 then
         return c / 2 * pow(t, 2) + b
@@ -56,25 +56,25 @@ _G.inOutQuad = function(t, b, c, d)
         return -c / 2 * ((t - 1) * (t - 3) - 1) + b
     end
 end
-_G.outInQuad = function(t, b, c, d)
+outInQuad = function(t, b, c, d)
     if t < d / 2 then
-        return _G.outQuad(t * 2, b, c / 2, d)
+        return outQuad(t * 2, b, c / 2, d)
     else
-        return _G.inQuad((t * 2) - d, b + c / 2, c / 2, d)
+        return inQuad((t * 2) - d, b + c / 2, c / 2, d)
     end
 end
 
-_G.inCubic = function(t, b, c, d)
+inCubic = function(t, b, c, d)
     t = t / d
     return c * pow(t, 3) + b
 end
 
-_G.outCubic = function(t, b, c, d)
+outCubic = function(t, b, c, d)
     t = t / d - 1
     return c * (pow(t, 3) + 1) + b
 end
 
-_G.inOutCubic = function(t, b, c, d)
+inOutCubic = function(t, b, c, d)
     t = t / d * 2
     if t < 1 then
         return c / 2 * t * t * t + b
@@ -84,25 +84,25 @@ _G.inOutCubic = function(t, b, c, d)
     end
 end
 
-_G.outInCubic = function(t, b, c, d)
+outInCubic = function(t, b, c, d)
     if t < d / 2 then
-        return _G.outCubic(t * 2, b, c / 2, d)
+        return outCubic(t * 2, b, c / 2, d)
     else
-        return _G.inCubic((t * 2) - d, b + c / 2, c / 2, d)
+        return inCubic((t * 2) - d, b + c / 2, c / 2, d)
     end
 end
 
-_G.inQuart = function(t, b, c, d)
+inQuart = function(t, b, c, d)
     t = t / d
     return c * pow(t, 4) + b
 end
 
-_G.outQuart = function(t, b, c, d)
+outQuart = function(t, b, c, d)
     t = t / d - 1
     return -c * (pow(t, 4) - 1) + b
 end
 
-_G.inOutQuart = function(t, b, c, d)
+inOutQuart = function(t, b, c, d)
     t = t / d * 2
     if t < 1 then
         return c / 2 * pow(t, 4) + b
@@ -112,25 +112,25 @@ _G.inOutQuart = function(t, b, c, d)
     end
 end
 
-_G.outInQuart = function(t, b, c, d)
+outInQuart = function(t, b, c, d)
     if t < d / 2 then
-        return _G.outQuart(t * 2, b, c / 2, d)
+        return outQuart(t * 2, b, c / 2, d)
     else
-        return _G.inQuart((t * 2) - d, b + c / 2, c / 2, d)
+        return inQuart((t * 2) - d, b + c / 2, c / 2, d)
     end
 end
 
-_G.inQuint = function(t, b, c, d)
+inQuint = function(t, b, c, d)
     t = t / d
     return c * pow(t, 5) + b
 end
 
-_G.outQuint = function(t, b, c, d)
+outQuint = function(t, b, c, d)
     t = t / d - 1
     return c * (pow(t, 5) + 1) + b
 end
 
-_G.inOutQuint = function(t, b, c, d)
+inOutQuint = function(t, b, c, d)
     t = t / d * 2
     if t < 1 then
         return c / 2 * pow(t, 5) + b
@@ -140,29 +140,29 @@ _G.inOutQuint = function(t, b, c, d)
     end
 end
 
-_G.outInQuint = function(t, b, c, d)
+outInQuint = function(t, b, c, d)
     if t < d / 2 then
-        return _G.outQuint(t * 2, b, c / 2, d)
+        return outQuint(t * 2, b, c / 2, d)
     else
-        return _G.inQuint((t * 2) - d, b + c / 2, c / 2, d)
+        return inQuint((t * 2) - d, b + c / 2, c / 2, d)
     end
 end
 
-_G.inSine = function(t, b, c, d) return -c * cos(t / d * (pi / 2)) + c + b end
+inSine = function(t, b, c, d) return -c * cos(t / d * (pi / 2)) + c + b end
 
-_G.outSine = function(t, b, c, d) return c * sin(t / d * (pi / 2)) + b end
+outSine = function(t, b, c, d) return c * sin(t / d * (pi / 2)) + b end
 
-_G.inOutSine = function(t, b, c, d) return -c / 2 * (cos(pi * t / d) - 1) + b end
+inOutSine = function(t, b, c, d) return -c / 2 * (cos(pi * t / d) - 1) + b end
 
-_G.outInSine = function(t, b, c, d)
+outInSine = function(t, b, c, d)
     if t < d / 2 then
-        return _G.outSine(t * 2, b, c / 2, d)
+        return outSine(t * 2, b, c / 2, d)
     else
-        return _G.inSine((t * 2) - d, b + c / 2, c / 2, d)
+        return inSine((t * 2) - d, b + c / 2, c / 2, d)
     end
 end
 
-_G.inExpo = function(t, b, c, d)
+inExpo = function(t, b, c, d)
     if t == 0 then
         return b
     else
@@ -170,7 +170,7 @@ _G.inExpo = function(t, b, c, d)
     end
 end
 
-_G.outExpo = function(t, b, c, d)
+outExpo = function(t, b, c, d)
     if t == d then
         return b + c
     else
@@ -178,7 +178,7 @@ _G.outExpo = function(t, b, c, d)
     end
 end
 
-_G.inOutExpo = function(t, b, c, d)
+inOutExpo = function(t, b, c, d)
     if t == 0 then return b end
     if t == d then return b + c end
     t = t / d * 2
@@ -190,25 +190,25 @@ _G.inOutExpo = function(t, b, c, d)
     end
 end
 
-_G.outInExpo = function(t, b, c, d)
+outInExpo = function(t, b, c, d)
     if t < d / 2 then
-        return _G.outExpo(t * 2, b, c / 2, d)
+        return outExpo(t * 2, b, c / 2, d)
     else
-        return _G.inExpo((t * 2) - d, b + c / 2, c / 2, d)
+        return inExpo((t * 2) - d, b + c / 2, c / 2, d)
     end
 end
 
-_G.inCirc = function(t, b, c, d)
+inCirc = function(t, b, c, d)
     t = t / d
     return (-c * (sqrt(1 - pow(t, 2)) - 1) + b)
 end
 
-_G.outCirc = function(t, b, c, d)
+outCirc = function(t, b, c, d)
     t = t / d - 1
     return (c * sqrt(1 - pow(t, 2)) + b)
 end
 
-_G.inOutCirc = function(t, b, c, d)
+inOutCirc = function(t, b, c, d)
     t = t / d * 2
     if t < 1 then
         return -c / 2 * (sqrt(1 - t * t) - 1) + b
@@ -218,15 +218,15 @@ _G.inOutCirc = function(t, b, c, d)
     end
 end
 
-_G.outInCirc = function(t, b, c, d)
+outInCirc = function(t, b, c, d)
     if t < d / 2 then
-        return _G.outCirc(t * 2, b, c / 2, d)
+        return outCirc(t * 2, b, c / 2, d)
     else
-        return _G.inCirc((t * 2) - d, b + c / 2, c / 2, d)
+        return inCirc((t * 2) - d, b + c / 2, c / 2, d)
     end
 end
 
-_G.inElastic = function(t, b, c, d, a, p)
+inElastic = function(t, b, c, d, a, p)
     if t == 0 then return b end
 
     t = t / d
@@ -251,7 +251,7 @@ end
 
 -- a: amplitud
 -- p: period
-_G.outElastic = function(t, b, c, d, a, p)
+outElastic = function(t, b, c, d, a, p)
     if t == 0 then return b end
 
     t = t / d
@@ -274,7 +274,7 @@ end
 
 -- p = period
 -- a = amplitud
-_G.inOutElastic = function(t, b, c, d, a, p)
+inOutElastic = function(t, b, c, d, a, p)
     if t == 0 then return b end
 
     t = t / d * 2
@@ -305,27 +305,27 @@ end
 
 -- a: amplitud
 -- p: period
-_G.outInElastic = function(t, b, c, d, a, p)
+outInElastic = function(t, b, c, d, a, p)
     if t < d / 2 then
-        return _G.outElastic(t * 2, b, c / 2, d, a, p)
+        return outElastic(t * 2, b, c / 2, d, a, p)
     else
-        return _G.inElastic((t * 2) - d, b + c / 2, c / 2, d, a, p)
+        return inElastic((t * 2) - d, b + c / 2, c / 2, d, a, p)
     end
 end
 
-_G.inBack = function(t, b, c, d, s)
+inBack = function(t, b, c, d, s)
     if not s then s = 1.70158 end
     t = t / d
     return c * t * t * ((s + 1) * t - s) + b
 end
 
-_G.outBack = function(t, b, c, d, s)
+outBack = function(t, b, c, d, s)
     if not s then s = 1.70158 end
     t = t / d - 1
     return c * (t * t * ((s + 1) * t + s) + 1) + b
 end
 
-_G.inOutBack = function(t, b, c, d, s)
+inOutBack = function(t, b, c, d, s)
     if not s then s = 1.70158 end
     s = s * 1.525
     t = t / d * 2
@@ -337,15 +337,15 @@ _G.inOutBack = function(t, b, c, d, s)
     end
 end
 
-_G.outInBack = function(t, b, c, d, s)
+outInBack = function(t, b, c, d, s)
     if t < d / 2 then
-        return _G.outBack(t * 2, b, c / 2, d, s)
+        return outBack(t * 2, b, c / 2, d, s)
     else
-        return _G.inBack((t * 2) - d, b + c / 2, c / 2, d, s)
+        return inBack((t * 2) - d, b + c / 2, c / 2, d, s)
     end
 end
 
-_G.outBounce = function(t, b, c, d)
+outBounce = function(t, b, c, d)
     t = t / d
     if t < 1 / 2.75 then
         return c * (7.5625 * t * t) + b
@@ -361,21 +361,21 @@ _G.outBounce = function(t, b, c, d)
     end
 end
 
-_G.inBounce = function(t, b, c, d) return c - _G.outBounce(d - t, 0, c, d) + b end
+inBounce = function(t, b, c, d) return c - outBounce(d - t, 0, c, d) + b end
 
-_G.inOutBounce = function(t, b, c, d)
+inOutBounce = function(t, b, c, d)
     if t < d / 2 then
-        return _G.inBounce(t * 2, 0, c, d) * 0.5 + b
+        return inBounce(t * 2, 0, c, d) * 0.5 + b
     else
-        return _G.outBounce(t * 2 - d, 0, c, d) * 0.5 + c * .5 + b
+        return outBounce(t * 2 - d, 0, c, d) * 0.5 + c * .5 + b
     end
 end
 
-_G.outInBounce = function(t, b, c, d)
+outInBounce = function(t, b, c, d)
     if t < d / 2 then
-        return _G.outBounce(t * 2, b, c / 2, d)
+        return outBounce(t * 2, b, c / 2, d)
     else
-        return _G.inBounce((t * 2) - d, b + c / 2, c / 2, d)
+        return inBounce((t * 2) - d, b + c / 2, c / 2, d)
     end
 end
 
