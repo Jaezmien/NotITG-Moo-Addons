@@ -1,13 +1,19 @@
 --[[
-    Jaezmien's Wierd Mod Reader Syntax
+    Jaezmien's Wierd Mod Reader Syntax v2
     
     -------------------------------------------
-    pmods, pmods_offset
-    > These are tables that contain the player's current mods
-    > You can do: `pmods[1].invert = 100` to apply invert to Player 1
-    > Or, `pmods.flip = 100` to apply flip to all players*
-    
-    * Only in the default pn range
+    pmods
+	> This is how the mod reader is storing the player's mods
+	> Thanks to layering, you can have the same mod at the same time with different values!
+	> Here are the different ways you can use it:
+	>
+	> pmods( layer )[ player_number ].mod = value -- Sets the mod for a specific player on a specific layer**
+	> pmods( layer ).mod = value                  -- Sets the mod for all players* on a specific layer
+	> pmods[ player_number ].mod = value          -- Sets the mod for a specific player on the default layer**
+	> pmods.mod = value                           -- Sets the mod for all players* on the default layer
+
+	* Do remember that "all players" mean whatever you have set as default! (Template default, 8 for v4, otherwise, 2)
+	** You can also grab the mod value from these!
     -------------------------------------------
     redirs
     > This is a table that you can use to create a mod that uses a function
@@ -18,37 +24,58 @@
     >       return '*-1 '.. value ..' flip'
     >   end
     >   pmods.flip_alternative = 100 -- Applies `flip_alternative` to all players.
+	> Just need to change the value? Just return a number!
+	>	redirs['reverse'] = function(v) return v == 100 and 99.99 or v end
+	>	(This is already done in the template)
+	>
+	> Not only that, you can also use it as a pseudo-aux by supplying a nil value (or an empty function):
+	>  redirs['wiggleAux'] = nil
     >
     > There's also the alternative method:
-    >   redirs{'mod name', function(value, player_number) (Optional)}
+    >   redirs{'mod name', function/nil}
 
     -------------------------------------------
-    ease, ease_offset
+    ease
     > Eases a mod value to another value
     > Base Format:
-    >   ease{ start_beat, length*, ease**, [mods]... }
+    >   ease{ start_beat, length*, ease*, [mods]... }
     >
     > Mods Format:
     >   `new_value (optional), mod_string`. (Can be followed by more mods)
-    >   The new value will be determined by the last seen number (default, 0)
-    >       `200,' Drunk', 300, 'Tipsy'` will apply 200% Drunk and 300% Tipsy
-    >       `100, 'invert', 'flip'` will apply 100% Invert and 100% Flip
+    >   The new value will be determined by the last seen number (default, 100)
+    >       `200, 'Drunk', 300, 'Tipsy'` will apply 200% Drunk and 300% Tipsy
+    >       `'invert', 'flip'`           will apply 100% Invert and 100% Flip
+	>		`0, 'dizzy'`                 will apply 0 dizzy
     >   There's also optional parameters:
-    >       `extra` (Number[]) = Used for extra parameters on specific eases
-    >       `offset` (Boolean) = Will modify `pmods_offset` instead of `pmods`
+    >       `layer` (Number) = Will use the provided layer instead of the default
     >       `plr` (Number[2] / Number) = Will call either a specific player or players instead of the default.
     >
     > Like Ky_Dash and Xero's Mod Reader. This returns the table itself, so you can stack call these!
-    >
-    > `ease_offset` does the same thing as `ease`, but applies the `offset` parameter automatically.
     >
     > Example:
     >   ease
     >   { 0, 360, 'rotationz' } -- Apply 360 rotationz
     >   { 0, 5, linear, 0, 'rotationz', 100, 'drunk' } -- Set rotationz to 0, and drunk to 100 in 5 beats, with linear ease.
 
-    * Optional, will return `0` if not specified. Length is `len` by default. If the value is higher than `start_beat`, it will be treated as `end`
-    ** Optional, will return `linear` if not specified. You can also use `ease=`, if you want to for some reason.
+    * Optional. Both must not provided for the ease to run for one frame.
+
+	-------------------------------------------
+    clear
+	> Clears all active mods and re-applies the init mods. (Except for eases)
+	> Format:
+	>	{ beat }
+
+	-------------------------------------------
+    easef
+    > Does an Exschwasion func_ease
+    > Format:
+    >   { beat_start, beat_length*, value_min, value_max, function, ease** }
+    >   There's also optional parameters:
+    >       `extra` (Number[]) = Used for extra parameters on specific eases
+
+    * Length is `len` by default. If the value is higher than `start_beat`, it will be treated as `end`
+    ** Optional, will use `linear` if not specified.
+
     -------------------------------------------
     func
     > `func` does two things:
@@ -61,16 +88,6 @@
     >           If it's a boolean, it will always run the function if the song started past `beat_start+4`.
 
     -------------------------------------------
-    func_ease
-    > Does an Exschwasion func_ease
-    > Format:
-    >   { beat_start, beat_length*, value_min, value_max, function, ease** }
-    >   There's also optional parameters:
-    >       `extra` (Number[]) = Used for extra parameters on specific eases
-
-    * Length is `len` by default. If the value is higher than `start_beat`, it will be treated as `end`
-    ** Optional, will return `linear` if not specified. You can also use `ease=`, if you want to for some reason.
-    -------------------------------------------
     Extra stuffs:
         Dont want P1 and P2 to be the default players for some mod lines?
         Use `set_default_pn` to set the new players.
@@ -79,12 +96,24 @@
             `set_default_pn( {min, max} ) -- [min - max]`
             `set_default_pn( max ) -- [1 - max]`
             `set_default_pn() -- [1 - 2]`
+
+		Want to change which layer is used by default?
+		Use `set_default_layer` to change it.
+		The number passed is clamped from 1 to what is used in setting.lua's config.modreader.jaezmien.layers (or by default, 2)
+		Example
+			`set_default_layer( 1 )`
+
+		The default mods are `*-1 overhead, *-1 1x`
+
+		Don't want the mods to apply? Set `apply_mods` to false.
             
     Oh! And even though this is in a mod reader environment, any variables created here will be visible in the `melody` env, so you don't have to worry about that.
 ]]
 
+set_default_pn( 1, 2 ) -- change default player range
+set_default_layer( 1 ) -- change default layer
+
 -- Insert mods here! --
 -----------------------
-local l, e = 'len', 'end'
 
--- ease{0,9e9,'beat'}
+-- pmods.beat = 100
