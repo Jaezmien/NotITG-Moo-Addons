@@ -280,7 +280,6 @@ local function instant() return 1 end
 local function linear(t) return t end
 reader.instant = instant
 reader.linear = linear
-local convert_ease
 do
     reader.flip = setmetatable({}, {
 		__call = function(self, fn)
@@ -383,27 +382,6 @@ do
 	reader.inBack = with1param(inBackInternal, 1.70158)
 	reader.outBack = with1param(outBackInternal, 1.70158)
 	reader.inOutBack = with1param(inOutBackInternal, 1.70158)
-
-	local reverse_lookup = {
-		[reader.instant] = reader.instant,
-		[reader.linear] = reader.linear,
-		[reader.popElastic] = reader.popElastic,
-		[reader.tapElastic] = reader.tapElastic,
-		[reader.pulseElastic] = reader.pulseElastic,
-		[reader.impulse] = reader.impulse,
-		[reader.inElastic] = reader.inElastic,
-		[reader.outElastic] = reader.outElastic,
-		[reader.inOutElastic] = reader.inOutElastic,
-		[reader.inBack] = reader.inBack,
-		[reader.outBack] = reader.outBack,
-		[reader.inOutBack] = reader.inOutBack
-	}
-
-    convert_ease = function( e )
-		if reverse_lookup[e] then return reverse_lookup[e] end
-		if type(e) == 'function' then return (function( t, x, y ) return e( t, 0, 1, 1, x, y ) end) end
-		print("Error! Invalid ease", e)
-	end
 end -- ease.xml
 
 local copy = table.weak_clone
@@ -483,8 +461,6 @@ do
 	local function ease(self)
 		self.n = #self
 
-		self[3] = convert_ease(self[3]) -- convert ease
-
 		if self[3](1) < 0.5 then
 			self.transient = 1
 		end
@@ -537,7 +513,7 @@ do
 	-- adds a reset to the ease table
 	local function reset(self)
 		self[2] = self[2] or 0
-		self[3] = convert_ease(self[3] or instant)
+		self[3] = self[3] or instant
 		self.reset = true
 		if self.only then
 			if type(self.only) == 'string' then
@@ -615,7 +591,7 @@ do
 			self[2] = self[2] - self[1]
 		end
 		local fn = table.remove(self)
-		local eas = convert_ease(self[3])
+		local eas = self[3]
 		local start_percent = #self >= 5 and table.remove(self, 4) or 0
 		local end_percent = #self >= 4 and table.remove(self, 4) or 1
 		local end_beat = self[1] + self[2]
@@ -1352,7 +1328,7 @@ do
 	local function is_valid_ease(eas)
 		local err = type(eas) ~= 'function' and (not getmetatable(eas) or not getmetatable(eas).__call)
 		if not err then
-			local result = convert_ease(eas)(1)
+			local result = eas(1)
 			err = type(result) ~= 'number'
 		end
 		return not err

@@ -244,12 +244,17 @@ local update = function()
                     reader.hey_config.EasingModTable.BeatBasedMods and (v[8] == 'len' and beat <= v[1] + v[2] or v[8] == 'end' and beat <= v[2])
                     or not reader.hey_config.EasingModTable.BeatBasedMods and (v[8] == 'len' and time <= v[1] + v[2] or v[8] == 'end' and time <= v[2])
                 then
-                    local strength = v[6](
-                        (reader.hey_config.EasingModTable.BeatBasedMods and beat or time) - v[1], -- Elapsed time
-                        v[3], -- Beginning
-                        v[4] - v[3], -- Change (ending - beginning)
-                        v[8] == 'end' and v[2] - v[1] or v[2] -- Duration (total time)
-                    );
+                    -- local strength = v[6](
+                    --     (reader.hey_config.EasingModTable.BeatBasedMods and beat or time) - v[1], -- Elapsed time
+                    --     v[3], -- Beginning
+                    --     v[4] - v[3], -- Change (ending - beginning)
+                    --     v[8] == 'end' and v[2] - v[1] or v[2] -- Duration (total time)
+                    -- );
+					local elapsed = (reader.hey_config.EasingModTable.BeatBasedMods and beat or time) - v[1]
+					local duration = v[8] == 'end' and v[2] - v[1] or v[2]
+					local beginning = v[3]
+					local change = v[4] - v[3]
+					local strength = beginning + v[6](elapsed / duration) * change
                     local modstr = v[5] == 'xmod' and strength..'x' or (v[5] == 'cmod' and 'C'..strength or strength..' '..v[5]);
                     mods[v[9]] = mods[v[9]] .. '*-1 ' .. modstr .. ',';
                     --hey.Mod(v[3], v[9]);

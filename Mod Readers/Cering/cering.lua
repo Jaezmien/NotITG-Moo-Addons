@@ -88,7 +88,7 @@ local update = function()
             elseif v[1] == 'me' then
                 if v and v[2] and v[3] and v[4] and v[5] and v[6] and v[7] then
                     local ease = reader.ease_convertion[ v[7] ]
-                    local amp = ease(beat - v[2], v[4], v[5] - v[4], v[3])
+					local amp = v[4] + ease((beat - v[2]) / v[3]) * (v[5] - v[4])
                     mod_applier(amp, v[6], v[8])
                 end
             end

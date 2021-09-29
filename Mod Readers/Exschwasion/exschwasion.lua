@@ -79,7 +79,7 @@ local update = function()
         if v and table.getn(v) > 6 and v[1] and v[2] and v[3] and v[4] and v[5] and v[6] and v[7] then
             if beat >=v[1] then
                 if (v[6] == 'len' and beat <=v[1]+v[2]) or (v[6] == 'end' and beat <=v[2]) then
-                    local strength = v[7](beat - v[1], v[3], v[4] - v[3], v[6] == 'end' and v[2] - v[1] or v[2], v[10], v[11])
+					local strength = v[3] + v[7]((beat - v[1]) / (v[6] == 'end' and v[2] - v[1] or v[2])) * (v[4] - v[3])
                     if type(v[5]) == 'string' then
                         local modstr = v[5] == 'xmod' and strength..'x' or (v[5] == 'cmod' and 'C'..strength or strength..' '..v[5])
                         mod_do('*-1 '..modstr,v[8]);
