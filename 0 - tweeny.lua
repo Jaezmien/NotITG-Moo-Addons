@@ -83,8 +83,7 @@ update_hooks{
 
                     -- If the OnEnd function returns false, we're deleting the Tweeny instance
                     -- Else, we reset it :D
-                    local do_reset = tween.OnEnd() == false
-                    if not do_reset then
+                    if tween.OnEnd() == false then
                         tweens[ id ] = nil
                     else
                         tween.Time = tween.MaxTime
