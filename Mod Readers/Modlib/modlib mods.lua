@@ -33,6 +33,9 @@
 -- misc
     mgr.mod_dual(mod, p1_value, p2_value, length, tween)
 
+-- "how to apply?"
+    modreader.modlib.init( lua{"fg/modlib mods", env=modreader.modlib} )
+
 ]]
 
 return function (mgr)

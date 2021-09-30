@@ -52,7 +52,7 @@ do
     end
     local function func_ease_r(values, op)
         op.timing = op.timing or default.timing
-        op.ease = convert_ease(op.ease) or default.ease
+        op.ease = op.ease and convert_ease(op.ease) or default.ease
         local beat_range = {values[1], values[2] + (op.timing == 'len' and values[1] or 0)} -- convert times to end
         local percentages = {values[4], values[5]}
         op.args = op.args and (type(op.args) == 'table' and op.args or {op.args}) or {}
@@ -145,7 +145,7 @@ do
             end
             op.pn = temp
         end
-        op.ease = convert_ease(op.ease) or default.ease
+        op.ease = op.ease and convert_ease(op.ease) or default.ease
         local beat_range = {values[1], values[2] + (op.timing == 'len' and values[1] or 0)} -- convert times to end
         local mod = values[3]
         local percentages = {values[4], values[5]}

@@ -19,6 +19,9 @@ local update = function()
     local beat = GAMESTATE:GetSongBeat()
 
     if not setup then
+        for _,ease in ipairs( mods_ease ) do
+            if ease[10] or ease[11] then ease[7] = ease[7].params( ease[10], ease[11] ) end
+        end
         local comp = function(a,b) return a[1]<b[1] end
         table.sort( reader.mod_actions, comp )
         setup = true

@@ -86,7 +86,7 @@ do
            ...: additional arguments to pass through to `func`
         ]] --
         local initial = current[player][name] or 0
-        tweening[player][name] = {func, start, initial, value, transition, arg}
+        tweening[player][name] = {convert_ease(func), start, initial, value, transition, arg}
         if debug then
             SCREENMAN:SystemMessage(tostring(start) .. "T/" .. player .. ": " ..
                                         name .. " " .. tostring(initial) ..
