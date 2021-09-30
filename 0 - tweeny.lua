@@ -1,4 +1,4 @@
-local linear = function(t, b, c, d) return c * t / d + b end
+local linear = function(t) return t end
 
 local tweens = {}
 
@@ -78,7 +78,7 @@ update_hooks{
 
                 if tween.Time == tween.MaxTime then tween.OnStart() end
                 tween.Time = math.max( tween.Time - delta_time, 0 )
-                tween.OnTick( tween.Tween(tween.MaxTime - tween.Time, tween.Range[1], tween.Range[2] - tween.Range[1], tween.MaxTime) )
+				tween.OnTick( tween.Range[1] + tween.Tween((tween.MaxTime - tween.Time) / tween.MaxTime) * (tween.Range[2] - tween.Range[1]) )
                 if tween.Time == 0 then
 
                     -- If the OnEnd function returns false, we're deleting the Tweeny instance

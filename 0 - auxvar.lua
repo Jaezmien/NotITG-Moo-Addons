@@ -2,7 +2,7 @@ local auxvars = {}
 local auxvars_dictionary = {}
 local auxvars_public_dictionary = {}
 
-local linear = function(t, b, c, d) return c * t / d + b end
+local linear = function(t) return t end
 
 aux = setmetatable(
     {
@@ -20,7 +20,7 @@ aux = setmetatable(
             
             public.tween = function(self,seconds,tween)
                 if not seconds then return end
-                if not tween or tween(1,0,1,1) ~= 1 then tween = linear end
+                if not tween or type(tween(1)) ~= 'number' then tween = linear end
 
                 local t = {
                     time_passed = 0,
@@ -127,7 +127,7 @@ update_hooks{ 'auxvar update', function()
                     auxvar.value = tween.end_value
                     table.remove(auxvar.tweens,1)
                 else
-                    auxvar.value = tween.ease( tween.time_passed, tween.start_value, tween.end_value - tween.start_value, tween.time_length )
+					auxvar.value = tween.start_value + tween.ease( tween.time_passed / tween.time_length ) * ( tween.end_value - tween.start_value )
                 end
 
             end
