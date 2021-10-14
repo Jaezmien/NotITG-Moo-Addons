@@ -40,31 +40,48 @@ local eases = {}
 local ease_funcs = {}
 local funcs = {}
 
-local function parse_mod( modname, modvalue, pn )
-	if redirs[ modname ] then
-		local rtype = type( redirs[ modname ] )
-		if rtype == 'string' then
-			modname = redirs[ modname ]
-		elseif rtype == 'function' then
-			local tmp = redirs[ modname ]( modvalue, pn )
-			if type( tmp ) ~= 'number' then return tmp end
-			modvalue = tmp
-		end
-	end
+-- Column-specific mod expansion
+local expand_mods = { ['dark'] = true, ['reverse'] = true, ['dizzy'] = true, ['drunk'] = true, ['stealth'] = true }
+for _, dir in ipairs({'x', 'y', 'z'}) do
+	for _, m in ipairs({ 'confusionoffset', 'move' }) do expand_mods[ m..dir ] = true end
+end
 
+local _recalc_mods = {
+	['dark'] = function(v) return 50 + (v / 100) * 50 end,
+	['reverse'] = function(v) return v == 100 and 99.99 or v end,
+	['confusionoffset'] = function(v) return v * math.pi / 1.8 end,
+}
+local find_recalc_mod = function(modname)
+	if _recalc_mods[modname] then return _recalc_mods[modname] end
+	local result, _, mod = string.find(modname, "(%a+[^xz])[0-7xyz]+")
+	if result ~= nil and _recalc_mods[mod] then return _recalc_mods[ mod ] end
+	return function(v) return v end
+end
+local recalc_mods = setmetatable( {},
+	{
+		__index = function(t, k)
+			_recalc_mods[k] = _recalc_mods[k] or find_recalc_mod(k); return _recalc_mods[k]
+		end,
+	}
+)
+
+local setup = false
+
+local function parse_mod( modname, modvalue, pn )
+	modvalue = recalc_mods[ modname ]( modvalue )
+	if redirs[ modname ] and type( redirs[ modname ] ) == 'function' then return redirs[ modname ]( modvalue, pn ) end
 	return '*-1 ' .. modvalue ..' '.. modname
 end
 local function apply_mod( modstr, pn ) if modstr and reader.apply_mods then mod_do( modstr, pn ) end end
 local function noop() end
 local function create_pmod()
-	local m = {}	
-	for l=1, pmod_layers do
-		local l = l
-		local layer = {}
+	local m = {} -- m[ pn ][ layer ][ mod ] = value
 
-		for pn=1, default_max_pn do
-			local pn = pn
+	for pn=1, default_max_pn do
+		local pn=pn
+		local p = {}
 
+		for layer=1, pmod_layers do
 			local mods = setmetatable( {}, { __index = function(_, k) return default[k] end, } )
 			local handler = {}
 			handler.get = function(_,k) return k and mods[k] or mods end
@@ -75,43 +92,66 @@ local function create_pmod()
 			setmetatable(
 				handler,
 				{
-					__index = function(_, k) return mods[k] end,
-					__newindex = function(t, k, v)
-						k = string.lower( k )
-						if mods[ k ] == v then return end
+					__index = function(_, mod) return mods[mod] end,
+					__newindex = function(_, mod, val)
+						mod = string.lower( mod )
+						if type(redirs[ mod ]) == 'string' then mod = redirs[mod] end
+						if expand_mods[ mod ] then
+							for c=0, 7 do local c = (OPENITG and 0 or 1) + c; _[ mod .. c ] = val; end
+							return
+						end
+						if mods[ mod ] == val then return end
 						
-						local apply = v and v ~= default[ k ]
+						local apply = val and val ~= default[ mod ]
 
 						-- ew
-						local rw = rawget( mods, k )
+						local rw = rawget( mods, mod )
 						if not rw and apply then handler.n = handler.n + 1
 						elseif rw and not apply then handler.n = handler.n - 1
 						end
 
-						mods[ k ] = apply and v or default[ k ]
+						mods[ mod ] = apply and val or default[ mod ]
 					end,
 					__len = function(t) return t.n end, -- lua 5.2+
 				}
 			)
 
-			layer[ pn ] = handler
+			p[ layer ] = handler
 		end
 
-		m[ l ] = setmetatable(
+		m[ pn ] = setmetatable(
 			{},
 			{
 				__index = function(_, k)
-					if type(k) == "number" then return layer[ k ] end
+					if type(k) == 'number' then return p[k] end
+					if type(k) == 'string' then return p[default_layer][k] end
 				end,
-				__newindex = function(_, k, v)
-					if type(k) ~= 'string' or type(v) ~= 'number' then print("[Mods] Invalid pmod shortcut, ignoring..."); return end
-					for pn=min_pn, max_pn do layer[ pn ][ k ] = v; end
-				end,
+				__newindex = function(_, mod, val) p[ default_layer ][ mod ] = val end, -- pmod[ pn ][ mod ] = value
+				__call = function(_, layer) return p[ layer ] end,
 			}
 		)
 	end
 
-	return m
+	local m_cache = {}
+
+	return setmetatable(
+		{},
+		{
+			__index = function(_, pn) return m[ pn ] end, -- pmod[ pn ]
+			__call = function(_, layer)
+				m_cache[ layer ] = m_cache[ layer ] or setmetatable(
+					{},
+					{
+						__newindex = function(_, mod, val)
+							for pn=min_pn, max_pn do m[ pn ][ layer ][ mod ] = val end -- pmod( layer )[ mod ] = value
+						end,
+					}
+				)
+				return m_cache[ layer ]
+			end, -- pmod( layer )
+			__newindex = function(_, mod, val) for pn=min_pn, max_pn do m[ pn ][ default_layer ][ mod ] = val end end, -- pmod[ mod ] = value
+		}
+	)
 end
 --
 
@@ -121,15 +161,9 @@ local pmods_target = create_pmod() -- for ease
 reader.pmods = {}
 setmetatable( reader.pmods,
 	{
-		__index = function(_, k) return pmods[ default_layer ][ k ] end,
-		__newindex = function(_, k, v)
-			for pn=min_pn, max_pn do pmods[ default_layer ][ pn ][ k ] = v end
-		end,
-		__call = function(_, k)
-			if not k then print("[Mods] Invalid pmod layer, ignoring..."); return end
-			if type(k) ~= "number" then print("[Mods] Invalid pmod layer (".. k .."), ignoring..."); return end
-			return pmods[ k ]
-		end,
+		__index = pmods,
+		__call = function(_, layer) return pmods(layer) end,
+		__newindex = function(_, mod, val) pmods[mod]=val end,
 	}
 )
 
@@ -154,7 +188,7 @@ setmetatable(
 		end,
 	}
 )
-reader.default{'zoomx', 100}{'zoomy', 100}{'zoomz', 100}
+reader.default{'zoom', 100}{'zoomx', 100}{'zoomy', 100}{'zoomz', 100}{'grain', 400}
 
 reader.redirs = {}
 setmetatable(
@@ -173,16 +207,22 @@ setmetatable(
 				(type(args[2]) ~= 'string' and type(args[2]) ~= 'function' and type(args[2]) ~= 'nil') then
 				print("[Mods] Invalid alias, ignoring...")
 			else
-				redirs[ args[1] ] = args[2] or noop
+				if args.col then
+					for i=0,7 do
+						local i = OPENITG and i or i + 1
+						redirs[ args[1] .. i ] = args[2] or noop
+					end
+				else
+					redirs[ args[1] ] = args[2] or noop
+				end
 			end
 			return t
 		end,
 	}
 )
-reader.redirs {'reverse', function(v) return v==100 and 99.99 or v end}
-{'xmod', function(v) return '*-1 '.. v ..'x' end}
+reader.redirs{'xmod', function(v) return '*-1 '.. v ..'x' end}
 {'cmod', function(v) return '*-1 c'.. v end}
-{'dark', function(v) return 50 + (v / 100) * 50 end}
+{'noteskew', 'noteskewx'}
 if not FUCK_EXE then
 	reader.redirs{'rotationx', function(v,pn) mod_plr[pn]:rotationx( v ) end}
 	{'rotationy', function(v,pn) mod_plr[pn]:rotationy( v ) end}
@@ -226,7 +266,7 @@ setmetatable(
 				if type(v) == 'number' then
 					mod_value = v
 				elseif type(v) == 'string' then
-					el.mods[ string.lower(v) ] = mod_value
+					el.mods[ string.lower(v) ] = mod_value 
 				else
 					print("[Mods] Invalid mod table, ignoring..."); return t
 				end
@@ -345,7 +385,6 @@ setmetatable(
 local last_seen_beat = GAMESTATE:GetSongBeat()
 local last_seen_time = get_song_time()
 
-local setup = false
 reader.reset = function()
 	eases, ease_funcs, funcs = {}, {}, {}
 	for l=1, pmod_layers do for pn=1, default_max_pn do reader.pmods( l )[ pn ]:clear() end end
@@ -363,7 +402,8 @@ local function update()
 
 		for pn, mods in ipairs( init ) do
 			for mod, value in pairs( mods ) do
-				reader.pmods( 1 )[ pn ][ mod ] = value
+				if pmods[ pn]( 1 )[ mod ] ~= default[ mod ] then print("[Mods] Pmod " .. mod .. " will be overidden by init value") end
+				pmods[ pn ]( 1 )[ mod ] = value
 			end
 		end
 
@@ -387,8 +427,8 @@ local function update()
 		local layer = ease.layer
 		local plr = ease.plr
 
-		local mod_layer = core[ layer ][ plr ]
-		local mod_layer_target = target[ layer ][ plr ]
+		local mod_layer = core[ plr ][ layer ]
+		local mod_layer_target = target[ plr ][ layer ]
 
 		if not ease.set then
 
@@ -445,7 +485,6 @@ local function update()
 		end
 
 	end
-
 	for index,func in pairs( funcs ) do
 
 		if beat < func.beat_start then break end
@@ -469,7 +508,7 @@ local function update()
 	-- Pmods application
 	if reader.apply_mods then
 
-		for pn=min_pn, max_pn do
+		for pn=1, default_max_pn do
 			local pn=pn
 	
 			-- Create mod table (mod => value)
@@ -478,23 +517,26 @@ local function update()
 
 			-- Iterate through layers
 			for l=1, pmod_layers do
-				local mod_layer = reader.pmods( l )[ pn ]
+				local mod_layer = reader.pmods[ pn ]( l )
 				if table.getn( mod_layer ) > 0 then
 
 					for mod,value in pairs( mod_layer:get() ) do
+						local mod = mod
+
+						if not mod_table[ mod ] then active_mods[ table.getn(active_mods) + 1 ] = mod end
 						mod_table[ mod ] = (mod_table[ mod ] or 0) + value
-						active_mods[ table.getn(active_mods) + 1 ] = mod
 	
 						if value == default[ mod ] then mod_layer:set( mod, nil ) end
 					end
 
 				end
 			end
-
+			
 			-- Apply mod table
 			if table.getn( active_mods ) > 0 then
 				local mod_builder = {}
 
+				-- Insert into mod builder
 				for i = 1, table.getn( active_mods ) do
 					local modname = active_mods[ i ]
 					local modvalue = mod_table[ modname ]
@@ -505,9 +547,7 @@ local function update()
 				end
 
 				local applystr = table.concat(mod_builder, ",")
-				if applystr ~= "" then
-					apply_mod( applystr, pn )
-				end
+				if applystr ~= "" then apply_mod( applystr, pn ) end
 			end
 
 		end
