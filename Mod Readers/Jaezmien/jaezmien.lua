@@ -82,7 +82,7 @@ local function create_pmod()
 		local p = {}
 
 		for layer=1, pmod_layers do
-			local mods = setmetatable( {}, { __index = function(_, k) return default[k] end, } )
+			local mods = setmetatable( {}, { __index = function(_,k) return default[k] end } )
 			local handler = {}
 			handler.get = function(_,k) return k and mods[k] or mods end
 			handler.set = function(_,k,v) mods[k]=v end
@@ -97,8 +97,7 @@ local function create_pmod()
 						local mod = string.lower( mod )
 						if type(redirs[ mod ]) == 'string' then mod = redirs[mod] end
 						if expand_mods[ mod ] then
-							for c=0, 7 do local c = (OPENITG and 0 or 1) + c; _[ mod .. c ] = val; end
-							return
+							for c=0,7 do local c = (OPENITG and 0 or 1) + c; _[ mod .. c ] = val; end; return
 						end
 						if mods[ mod ] == val then return end
 						
@@ -108,10 +107,9 @@ local function create_pmod()
 						local rw = rawget( mods, mod )
 						if not rw and apply then
 							handler.n = handler.n + 1
-							apply_mod( parse_mod(mod, val) )
 						elseif rw and not apply then
-							handler.n = handler.n - 1
-							apply_mod( parse_mod(mod, default[mod]) )
+							handler.n = handler.n - 1;
+							apply_mod( parse_mod(mod, val) )
 						end
 
 						mods[ mod ] = apply and val or nil
@@ -124,7 +122,46 @@ local function create_pmod()
 		end
 
 		m[ pn ] = setmetatable(
-			{},
+			{
+				apply = function()
+					local mod_values = {}
+					local active_mods = {}
+
+					for l=1, pmod_layers do
+						if table.getn(p[l]) > 0 then
+							for mod, value in pairs( p[l]:get() ) do
+
+								if not mod_values[ mod ] then table.insert( active_mods, mod ) end
+								mod_values[ mod ] = (mod_values[ mod ] or 0) + value
+
+							end
+						end
+					end
+
+					if table.getn( active_mods ) > 0 then
+						local mod_builder = {}
+						local mod_builder_n = 0
+
+						for i = 1, table.getn( active_mods ) do -- Insert into mod builder
+							local modname = active_mods[ i ]
+							local modvalue = mod_values[ modname ]
+						
+							local modstr = parse_mod( modname, modvalue, pn )
+
+							
+							if modstr then
+								mod_builder[ mod_builder_n+1 ] = modstr
+								mod_builder_n = mod_builder_n + 1
+							end
+						end
+					
+						if mod_builder_n > 0 then
+							local applystr = table.concat(mod_builder, ",")
+							apply_mod( applystr, pn )
+						end
+					end
+				end,
+			},
 			{
 				__index = function(_, k)
 					if type(k) == 'number' then return p[k] end
@@ -137,7 +174,6 @@ local function create_pmod()
 	end
 
 	local m_cache = {}
-
 	return setmetatable(
 		{},
 		{
@@ -515,47 +551,7 @@ local function update()
 
 	-- Pmods application
 	if reader.apply_mods then
-
-		for pn=1, default_max_pn do
-			local pn=pn
-	
-			-- Create mod table (mod => value)
-			local mod_table = {}
-			local active_mods = {}
-
-			-- Iterate through layers
-			for l=1, pmod_layers do
-				local mod_layer = reader.pmods[ pn ]( l )
-				if table.getn( mod_layer ) > 0 then
-					for mod,value in pairs( mod_layer:get() ) do
-						if not mod_table[ mod ] then active_mods[ table.getn(active_mods) + 1 ] = mod end
-						mod_table[ mod ] = (mod_table[ mod ] or 0) + value
-	
-						if value == default[ mod ] then mod_layer:set( mod, nil ) end
-					end
-				end
-			end
-			
-			-- Apply mod table
-			if table.getn( active_mods ) > 0 then
-				local mod_builder = {}
-
-				-- Insert into mod builder
-				for i = 1, table.getn( active_mods ) do
-					local modname = active_mods[ i ]
-					local modvalue = mod_table[ modname ]
-
-					local modstr = parse_mod( modname, modvalue, pn )
-
-					if modstr then table.insert( mod_builder, modstr ) end
-				end
-
-				local applystr = table.concat(mod_builder, ",")
-				if applystr ~= "" then apply_mod( applystr, pn ) end
-			end
-
-		end
-
+		for pn=1, default_max_pn do pmods[ pn ].apply() end
 	end
 end
 ------------------------------
