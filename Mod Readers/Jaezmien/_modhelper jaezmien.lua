@@ -3,20 +3,20 @@ local helper = {}
 -- insert mod helper stuff here
 -------------------------------
 
-function helper.mod_bounce(beat, length, start, apex, bmod, bease, invert, plr, extra)
+function helper.mod_bounce(beat, length, start, apex, bmod, bease, invert, plr)
 	if length > beat then length = length-beat end
 	local i,o = 'out', 'in'
 	if invert then i, o = o, i end
-	ease {beat, start, bmod, plr = plr, extra = extra}
-	{beat             , length/2, melody[i..bease],  apex, bmod, plr = plr}
-	{beat + (length/2), length/2, melody[o..bease], start, bmod, plr = plr}
+	ease{beat, start, bmod, plr = plr}
+	{beat, length/2, melody[i..bease],  apex, bmod, plr = plr}
+    {beat + (length/2), length/2, melody[o..bease], start, bmod, plr = plr}
 end
 
 function helper.func_bounce(beat, length, start, apex, func, ease, invert)
 	if length > beat then length = length-beat end
 	local i,o = 'out', 'in'
 	if invert then i, o = o, i end
-	ease_func {beat             , length/2, start, apex, func, melody[i..ease]}
+	ease_func {beat, length/2, start, apex, func, melody[i..ease]}
 	{beat + (length/2), length/2, apex, start, func, melody[o..ease]}
 end
 

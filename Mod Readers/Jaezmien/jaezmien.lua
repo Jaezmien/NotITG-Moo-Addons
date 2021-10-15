@@ -94,7 +94,7 @@ local function create_pmod()
 				{
 					__index = function(_, mod) return mods[mod] end,
 					__newindex = function(_, mod, val)
-						mod = string.lower( mod )
+						local mod = string.lower( mod )
 						if type(redirs[ mod ]) == 'string' then mod = redirs[mod] end
 						if expand_mods[ mod ] then
 							for c=0, 7 do local c = (OPENITG and 0 or 1) + c; _[ mod .. c ] = val; end
@@ -106,11 +106,15 @@ local function create_pmod()
 
 						-- ew
 						local rw = rawget( mods, mod )
-						if not rw and apply then handler.n = handler.n + 1
-						elseif rw and not apply then handler.n = handler.n - 1
+						if not rw and apply then
+							handler.n = handler.n + 1
+							apply_mod( parse_mod(mod, val) )
+						elseif rw and not apply then
+							handler.n = handler.n - 1
+							apply_mod( parse_mod(mod, default[mod]) )
 						end
 
-						mods[ mod ] = apply and val or default[ mod ]
+						mods[ mod ] = apply and val or nil
 					end,
 					__len = function(t) return t.n end, -- lua 5.2+
 				}
@@ -266,7 +270,11 @@ setmetatable(
 				if type(v) == 'number' then
 					mod_value = v
 				elseif type(v) == 'string' then
-					el.mods[ string.lower(v) ] = mod_value 
+					if expand_mods[ string.lower(v) ] then
+						for c=0, 7 do local c = (OPENITG and 0 or 1) + c; el.mods[ string.lower(v) .. c ] = mod_value; end
+					else
+						el.mods[ string.lower(v) ] = mod_value
+					end
 				else
 					print("[Mods] Invalid mod table, ignoring..."); return t
 				end
@@ -519,16 +527,12 @@ local function update()
 			for l=1, pmod_layers do
 				local mod_layer = reader.pmods[ pn ]( l )
 				if table.getn( mod_layer ) > 0 then
-
 					for mod,value in pairs( mod_layer:get() ) do
-						local mod = mod
-
 						if not mod_table[ mod ] then active_mods[ table.getn(active_mods) + 1 ] = mod end
 						mod_table[ mod ] = (mod_table[ mod ] or 0) + value
 	
 						if value == default[ mod ] then mod_layer:set( mod, nil ) end
 					end
-
 				end
 			end
 			
