@@ -318,7 +318,6 @@ setmetatable(
 						el.mods[ string.lower(v) ] = mod_value
 					end
 				else
-					show( args )
 					print("[Mods] Invalid mod table, ignoring..."); return t
 				end
 
