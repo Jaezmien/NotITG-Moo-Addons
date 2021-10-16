@@ -170,7 +170,9 @@ local function create_pmod()
 			{
 				__index = function(_, k)
 					if type(k) == 'number' then return p[k] end
-					if type(k) == 'string' then return p[default_layer][k] end
+					if type(k) == 'string' then
+						return p[default_layer][ expand_mods[k] and (k .. (OPENITG and 0 or 1)) or k ]
+					end
 				end,
 				__newindex = function(_, mod, val) p[ default_layer ][ mod ] = val end, -- pmod[ pn ][ mod ] = value
 				__call = function(_, layer) return p[ layer ] end,
