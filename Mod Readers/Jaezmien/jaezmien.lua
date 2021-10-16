@@ -7,6 +7,7 @@ local reader = {}
 
 local default_max_pn = version_minimum('V2') and 8 or 2
 local pmod_layers = config.modreader.jaezmien.layers or 2
+local max_cols = (OPENITG and (GAMESTATE:PlayerUsingBothSides() and 8 or 4) or 8) - 1
 reader.apply_mods = true
 
 local default_layer = 1
@@ -97,7 +98,7 @@ local function create_pmod()
 						local mod = string.lower( mod )
 						if type(redirs[ mod ]) == 'string' then mod = redirs[mod] end
 						if expand_mods[ mod ] then
-							for c=0,7 do local c = (OPENITG and 0 or 1) + c; _[ mod .. c ] = val; end; return
+							for c=0,max_cols do local c = (OPENITG and 0 or 1) + c; _[ mod .. c ] = val; end; return
 						end
 						if mods[ mod ] == val then return end
 						
@@ -109,7 +110,7 @@ local function create_pmod()
 							handler.n = handler.n + 1
 						elseif rw and not apply then
 							handler.n = handler.n - 1;
-							apply_mod( parse_mod(mod, val) )
+							apply_mod( parse_mod(mod, default[mod]) )
 						end
 
 						mods[ mod ] = apply and val or nil
@@ -307,7 +308,7 @@ setmetatable(
 					mod_value = v
 				elseif type(v) == 'string' then
 					if expand_mods[ string.lower(v) ] then
-						for c=0, 7 do local c = (OPENITG and 0 or 1) + c; el.mods[ string.lower(v) .. c ] = mod_value; end
+						for c=0,max_cols do local c = (OPENITG and 0 or 1) + c; el.mods[ string.lower(v) .. c ] = mod_value; end
 					else
 						el.mods[ string.lower(v) ] = mod_value
 					end
@@ -413,7 +414,8 @@ setmetatable(
 				el.func = args[3]
 			elseif type(args[2] == 'function') then
 				el.func = args[2]
-				el.persist = args[3] or args.persist or false
+				el.persist = args[3] or args.persist or nil
+				if el.persist == true then el.persist = 9e9 end
 			else
 				print('[Mods] Invalid func, ignoring...'); return t
 			end
