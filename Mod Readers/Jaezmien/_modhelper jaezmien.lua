@@ -16,7 +16,7 @@ function helper.func_bounce(beat, length, start, apex, func, ease, invert)
 	if length > beat then length = length-beat end
 	local i,o = 'out', 'in'
 	if invert then i, o = o, i end
-	ease_func {beat, length/2, start, apex, func, melody[i..ease]}
+	easef{beat, length/2, start, apex, func, melody[i..ease]}
 	{beat + (length/2), length/2, apex, start, func, melody[o..ease]}
 end
 

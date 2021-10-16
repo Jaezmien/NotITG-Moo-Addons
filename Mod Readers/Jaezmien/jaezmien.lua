@@ -23,6 +23,7 @@ setmetatable(init,{
 reader.init = init
 reader.init.overhead = 100
 reader.init.xmod = 1
+reader.init.cover = -1000000
 
 local min_pn = 1
 local max_pn = default_max_pn
@@ -44,13 +45,16 @@ local funcs = {}
 -- Column-specific mod expansion
 local expand_mods = { ['dark'] = true, ['reverse'] = true, ['dizzy'] = true, ['drunk'] = true, ['stealth'] = true }
 for _, dir in ipairs({'x', 'y', 'z'}) do
-	for _, m in ipairs({ 'confusionoffset', 'move' }) do expand_mods[ m..dir ] = true end
+	for _, m in ipairs({ 'move' }) do expand_mods[ m..dir ] = true end
+	for _, m in ipairs({ {'confusion','offset'} }) do expand_mods[ m[1]..dir..m[2] ] = true end
 end
 
 local _recalc_mods = {
 	['dark'] = function(v) return 50 + (v / 100) * 50 end,
 	['reverse'] = function(v) return v == 100 and 99.99 or v end,
 	['confusionoffset'] = function(v) return v * math.pi / 1.8 end,
+	['confusionxoffset'] = function(v) return v * math.pi / 1.8 end,
+	['confusionyoffset'] = function(v) return v * math.pi / 1.8 end,
 }
 local find_recalc_mod = function(modname)
 	if _recalc_mods[modname] then return _recalc_mods[modname] end
@@ -110,7 +114,7 @@ local function create_pmod()
 							handler.n = handler.n + 1
 						elseif rw and not apply then
 							handler.n = handler.n - 1;
-							apply_mod( parse_mod(mod, default[mod]) )
+							apply_mod( parse_mod(mod, default[mod], pn) )
 						end
 
 						mods[ mod ] = apply and val or nil
@@ -264,6 +268,7 @@ setmetatable(
 reader.redirs{'xmod', function(v) return '*-1 '.. v ..'x' end}
 {'cmod', function(v) return '*-1 c'.. v end}
 {'noteskew', 'noteskewx'}
+{'confusionzoffset','confusionoffset'}
 if not FUCK_EXE then
 	reader.redirs{'rotationx', function(v,pn) mod_plr[pn]:rotationx( v ) end}
 	{'rotationy', function(v,pn) mod_plr[pn]:rotationy( v ) end}
@@ -291,7 +296,7 @@ setmetatable(
 			el.beat_start = args[ 1 ]
 
 			local index = 2
-			if type( args[2] ) == 'number' and type( args[3] ) == 'function' then
+			if type( args[2] ) == 'number' and (type(args[3]) == 'function' or (type(args[3]) == 'table' and args[3]._IS_EASE)) then
 				el.beat_length = args[ 2 ] > args[ 1 ] and args[ 2 ] - args[ 1 ] or args[ 2 ]
 				el.ease = args[ 3 ]
 				index = 4
@@ -313,6 +318,7 @@ setmetatable(
 						el.mods[ string.lower(v) ] = mod_value
 					end
 				else
+					show( args )
 					print("[Mods] Invalid mod table, ignoring..."); return t
 				end
 
@@ -328,7 +334,7 @@ setmetatable(
 			end
 
 			for _,pn in ipairs( args.plr ) do
-				local _el = table.weak_clone( el )
+				local _el = table.clone( el )
 				_el.plr = pn
 				_el.index = table.getn( eases ) + 1
 				table.insert( eases, _el )
@@ -347,6 +353,7 @@ for i=2, pmod_layers do
 			__call = function(t, args)
 				args.layer = i
 				reader.ease( args )
+				return t
 			end
 		}
 	)
@@ -549,9 +556,10 @@ local function update()
 		if beat < func.beat_start then break end
 		
 		if func.beat_length then
-			func.func( beat )
 			if beat > func.beat_start + func.beat_length then
 				funcs[ index ] = nil
+			else
+				func.func( beat )
 			end
 		else
 			if beat <= func.beat_start+4 or (func.persist and beat <= func.persist) then
