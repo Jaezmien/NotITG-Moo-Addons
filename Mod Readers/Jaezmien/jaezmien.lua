@@ -43,10 +43,13 @@ local ease_funcs = {}
 local funcs = {}
 
 -- Column-specific mod expansion
-local expand_mods = { ['dark'] = true, ['reverse'] = true, ['dizzy'] = true, ['drunk'] = true, ['stealth'] = true }
-for _, dir in ipairs({'x', 'y', 'z'}) do
-	for _, m in ipairs({ 'move' }) do expand_mods[ m..dir ] = true end
-	for _, m in ipairs({ {'confusion','offset'} }) do expand_mods[ m[1]..dir..m[2] ] = true end
+local expand_mods = {}
+if FUCK_EXE or not OPENITG then
+	expand_mods = { ['dark'] = true, ['reverse'] = true, ['dizzy'] = true, ['drunk'] = true, ['stealth'] = true }
+	for _, dir in ipairs({'x', 'y', 'z'}) do
+		for _, m in ipairs({ 'move' }) do expand_mods[ m..dir ] = true end
+		for _, m in ipairs({ {'confusion','offset'} }) do expand_mods[ m[1]..dir..m[2] ] = true end
+	end
 end
 
 local _recalc_mods = {
