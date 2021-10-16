@@ -339,6 +339,19 @@ setmetatable(
 	}
 )
 
+for i=2, pmod_layers do
+	local i=i
+	reader['ease'..i] = setmetatable(
+		{},
+		{
+			__call = function(t, args)
+				args.layer = i
+				reader.ease( args )
+			end
+		}
+	)
+end
+
 reader.clear = {}
 setmetatable(
 	reader.clear,
