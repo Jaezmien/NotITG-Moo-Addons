@@ -13,18 +13,6 @@ reader.apply_mods = true
 local default_layer = 1
 reader.set_default_layer = function( layer ) default_layer = math.clamp( layer, 1, pmod_layers ) end
 
-local init = {}; for pn=1,default_max_pn do init[pn]={} end
-setmetatable(init,{
-	__newindex = function(t, k, v)
-		if type(k)=='string' and type(v)=='number' then for pn=1,default_max_pn do init[pn][k]=v end
-		elseif type(k)=='number' and type(v)=='table' then init[pn][ k ]=v; end
-	end
-})
-reader.init = init
-reader.init.overhead = 100
-reader.init.xmod = 1
-reader.init.cover = -1000000
-
 local min_pn = 1
 local max_pn = default_max_pn
 reader.set_default_pn = function(min,max)
@@ -43,13 +31,10 @@ local ease_funcs = {}
 local funcs = {}
 
 -- Column-specific mod expansion
-local expand_mods = {}
-if FUCK_EXE or not OPENITG then
-	expand_mods = { ['dark'] = true, ['reverse'] = true, ['dizzy'] = true, ['drunk'] = true, ['stealth'] = true }
-	for _, dir in ipairs({'x', 'y', 'z'}) do
-		for _, m in ipairs({ 'move' }) do expand_mods[ m..dir ] = true end
-		for _, m in ipairs({ {'confusion','offset'} }) do expand_mods[ m[1]..dir..m[2] ] = true end
-	end
+local expand_mods = { ['dark'] = true, ['reverse'] = true, ['dizzy'] = true, ['drunk'] = true, ['stealth'] = true }
+for _, dir in ipairs({'x', 'y', 'z'}) do
+	for _, m in ipairs({ 'move' }) do expand_mods[ m..dir ] = true end
+	for _, m in ipairs({ {'confusion','offset'} }) do expand_mods[ m[1]..dir..m[2] ] = true end
 end
 
 local _recalc_mods = {
@@ -173,9 +158,7 @@ local function create_pmod()
 			{
 				__index = function(_, k)
 					if type(k) == 'number' then return p[k] end
-					if type(k) == 'string' then
-						return p[default_layer][ expand_mods[k] and (k .. (OPENITG and 0 or 1)) or k ]
-					end
+					if type(k) == 'string' then return p[default_layer][k] end
 				end,
 				__newindex = function(_, mod, val) p[ default_layer ][ mod ] = val end, -- pmod[ pn ][ mod ] = value
 				__call = function(_, layer) return p[ layer ] end,
@@ -239,6 +222,27 @@ setmetatable(
 	}
 )
 reader.default{'zoom', 100}{'zoomx', 100}{'zoomy', 100}{'zoomz', 100}{'grain', 400}
+
+local init = {}; for pn=1,default_max_pn do init[pn]={} end
+setmetatable(init,{
+	__newindex = function(t, k, v)
+		if type(k)=='string' and type(v)=='number' then
+			for pn=1,default_max_pn do
+				init[pn][k]=v
+				pmods[pn](1)[k]=v
+			end
+		elseif type(k)=='number' and type(v)=='table' then
+			for mod,value in pairs(v) do
+				init[k][mod]=value
+				pmods[k](1)[mod]=value
+			end
+		end
+	end
+})
+reader.init = init
+reader.init.overhead = 100
+reader.init.xmod = 1
+reader.init.cover = -1000000
 
 reader.redirs = {}
 setmetatable(
@@ -472,7 +476,6 @@ local function update()
 
 		for pn, mods in ipairs( init ) do
 			for mod, value in pairs( mods ) do
-				if pmods[ pn]( 1 )[ mod ] ~= default[ mod ] then print("[Mods] Pmod " .. mod .. " will be overidden by init value") end
 				pmods[ pn ]( 1 )[ mod ] = value
 			end
 		end

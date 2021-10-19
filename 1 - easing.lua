@@ -59,13 +59,17 @@ local easeParam = function( ease )
 			return ease( t, a, p )
 		end
 	end
-	return setmetatable({},{
-		__index = function(_, k)
-			if k == "param" or k == "params" then return param end
-			return nil
-		end,
-		__call = function(_, t, a, p) return ease( t, a, p ) end
-	})
+	return setmetatable(
+		{},
+		{
+			__index = function(_, k)
+				if k == "_IS_EASE" then return true end
+				if k == "param" or k == "params" then return param end
+				return nil
+			end,
+			__call = function(_, t, a, p) return ease( t, a, p ) end
+		}
+	)
 end
 
 -- Tweener's easing functions
