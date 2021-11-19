@@ -479,7 +479,7 @@ local function update()
 			for pn, mods in ipairs( init ) do
 				local m = {}
 				for mod, value in pairs( mods ) do
-					reader.pmods( 1 )[ pn ][ mod ] = value
+					reader.pmods[ pn ]( 1 )[ mod ] = value
 					local modstr = parse_mod( mod, value, pn )
 					if modstr then table.insert(m, modstr) end
 				end
@@ -491,7 +491,7 @@ local function update()
 		else
 			for pn, mods in ipairs( init ) do
 				for mod, value in pairs( mods ) do
-					reader.pmods( 1 )[ pn ][ mod ] = value
+					reader.pmods[ pn ]( 1 )[ mod ] = value
 				end
 			end
 		end
