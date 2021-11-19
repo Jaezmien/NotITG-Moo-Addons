@@ -484,7 +484,6 @@ local function update()
 					if modstr then table.insert(m, modstr) end
 				end
 				if table.getn(m) > 0 then
-					print( table.concat(m,',') )
 					mod_do( table.concat(m,','), pn )
 				end
 			end
