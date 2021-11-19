@@ -9,6 +9,7 @@ local default_max_pn = version_minimum('V2') and 8 or 2
 local pmod_layers = config.modreader.jaezmien.layers or 2
 local max_cols = (OPENITG and (GAMESTATE:PlayerUsingBothSides() and 8 or 4) or 8) - 1
 reader.apply_mods = true
+reader.apply_init = true
 
 local default_layer = 1
 reader.set_default_layer = function( layer ) default_layer = math.clamp( layer, 1, pmod_layers ) end
@@ -474,9 +475,24 @@ local function update()
 	if not setup then
 		apply_mod( '*-1 clearall' )
 
-		for pn, mods in ipairs( init ) do
-			for mod, value in pairs( mods ) do
-				pmods[ pn ]( 1 )[ mod ] = value
+		if reader.apply_init and not reader.apply_mods then
+			for pn, mods in ipairs( init ) do
+				local m = {}
+				for mod, value in pairs( mods ) do
+					reader.pmods( 1 )[ pn ][ mod ] = value
+					local modstr = parse_mod( mod, value, pn )
+					if modstr then table.insert(m, modstr) end
+				end
+				if table.getn(m) > 0 then
+					print( table.concat(m,',') )
+					mod_do( table.concat(m,','), pn )
+				end
+			end
+		else
+			for pn, mods in ipairs( init ) do
+				for mod, value in pairs( mods ) do
+					reader.pmods( 1 )[ pn ][ mod ] = value
+				end
 			end
 		end
 
