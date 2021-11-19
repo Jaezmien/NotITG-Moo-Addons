@@ -91,8 +91,8 @@ for _, v in pairs(readers) do
 		end
 		if type(helper) ~= 'table' then helper = {} end
 
-		setmetatable(reader, {__index = melody})
-		setmetatable(helper, {__index = reader, __newindex = melody})
+		setmetatable(reader, {__index = melody, __newindex = melody})
+		setmetatable(helper, {__index = reader, __newindex = reader})
 
 		local reader_name = v.pure_name
 
