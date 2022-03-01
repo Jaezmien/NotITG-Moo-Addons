@@ -31,13 +31,6 @@ local eases = {}
 local ease_funcs = {}
 local funcs = {}
 
--- Column-specific mod expansion
-local expand_mods = { ['dark'] = true, ['reverse'] = true, ['dizzy'] = true, ['drunk'] = true, ['stealth'] = true }
-for _, dir in ipairs({'x', 'y', 'z'}) do
-	for _, m in ipairs({ 'move' }) do expand_mods[ m..dir ] = true end
-	for _, m in ipairs({ {'confusion','offset'} }) do expand_mods[ m[1]..dir..m[2] ] = true end
-end
-
 local _recalc_mods = {
 	['dark'] = function(v) return 50 + (v / 100) * 50 end,
 	['reverse'] = function(v) return v == 100 and 99.99 or v end,
@@ -90,9 +83,6 @@ local function create_pmod()
 					__newindex = function(_, mod, val)
 						local mod = string.lower( mod )
 						if type(redirs[ mod ]) == 'string' then mod = redirs[mod] end
-						if expand_mods[ mod ] then
-							for c=0,max_cols do local c = (OPENITG and 0 or 1) + c; _[ mod .. c ] = val; end; return
-						end
 						if mods[ mod ] == val then return end
 						
 						local apply = val and val ~= default[ mod ]
@@ -322,11 +312,7 @@ setmetatable(
 				if type(v) == 'number' then
 					mod_value = v
 				elseif type(v) == 'string' then
-					if expand_mods[ string.lower(v) ] then
-						for c=0,max_cols do local c = (OPENITG and 0 or 1) + c; el.mods[ string.lower(v) .. c ] = mod_value; end
-					else
-						el.mods[ string.lower(v) ] = mod_value
-					end
+					el.mods[ string.lower(v) ] = mod_value
 				else
 					print("[Mods] Invalid mod table, ignoring..."); return t
 				end
