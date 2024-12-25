@@ -3,6 +3,10 @@
     InitCommand="%melody(function(self)
         if self:getaux()==1 then return end; self:aux(1); -- initcommand bs
 
+        local IS_OITG = config.minimum_build == 'OpenITG'
+
+		-- Tables
+		local global_input = {false, false}
         local player_input = {{},{}}; local player_hinput = {{},{}}
         local player_action = {{},{}}; local player_haction = {{},{}}
         for pn = 1, 2 do
@@ -14,67 +18,56 @@
             end
         end
 
-        local hooks = {}
-        local disabled = false
-        input_handler = setmetatable(
-            {
-                PLAYER_LEFT = 1,
-                PLAYER_DOWN = 2,
-                PLAYER_UP = 3,
-                PLAYER_RIGHT = 4,
+		input_handler = {}
 
-                ACTION_1 = 1,
-                ACTION_2 = 2,
-                ACTION_3 = 3,
-                ACTION_4 = 4,
-                ACTION_5 = 5,
-                ACTION_6 = 6,
-                ACTION_7 = 7,
-                ACTION_8 = 8,
+		-- Globals --
+		do
+			input_handler.PLAYER_LEFT  = 1
+			input_handler.PLAYER_DOWN  = 2
+			input_handler.PLAYER_UP    = 3
+			input_handler.PLAYER_RIGHT = 4
 
-                TYPE_STEP = 0,
-                TYPE_PRESS = 1,
-                TYPE_LIFT = 2,
+			input_handler.ACTION_1 = 1
+			input_handler.ACTION_2 = 2
+			input_handler.ACTION_3 = 3
+			input_handler.ACTION_4 = 4
+			input_handler.ACTION_5 = 5
+			input_handler.ACTION_6 = 6
+			input_handler.ACTION_7 = 7
+			input_handler.ACTION_8 = 8
 
-                PLAYER = 0,
-                ACTION = 1,
-                GLOBAL = 2,
+			input_handler.TYPE_STEP  = 0
+			input_handler.TYPE_PRESS = 1
+			input_handler.TYPE_LIFT  = 2
 
-                --
+			input_handler.PLAYER = 0
+			input_handler.ACTION = 1
+			input_handler.GLOBAL = 2
+		end
 
-                HookInput = function(self, enum_type, id, funct)
-                    hooks[ self.PLAYER ][ enum_type ][ id ] = funct
-                end,
-                RemoveInput = function(self, enum_type, id)
-                    hooks[ self.PLAYER ][ enum_type ][ id ] = nil
-                end,
-                HookAction = function(self, enum_type, id, funct)
-                    hooks[ self.ACTION ][ enum_type ][ id ] = funct
-                end,
-                RemoveAction = function(self, enum_type, id)
-                    hooks[ self.ACTION ][ enum_type ][ id ] = nil
-                end,
-                HookGlobal = function(self, pn, id, func)
-                    hooks[ self.GLOBAL ][ id ] = func
-                end,
-                RemoveGlobal = function(self, pn, id)
-                    hooks[ self.GLOBAL ][ id ] = nil
-                end,
+		-- Functions (Internal) --
+		local disabled = false
+		function input_handler:Disabled(disable)
+			disabled = disable or false
+		end
 
-                Get = function(self, enum_type, pnum, col)
-                    if enum_type == self.PLAYER then
-                        return player_input[ pnum ][ col ]
-                    elseif enum_type == self.ACTION then
-                        return player_action[ pnum ][ col ]
-                    end
-                    return false
-                end,
-                Disable = function(self, disable) disabled = disable end,
-            },
-            {
-                __newindex = function() end
-            }
-        )
+		function input_handler:Get(enum_type, plr_num, column)
+			if enum_type == self.PLAYER then
+				return player_input[ plr_num ][ column ]
+			elseif enum_type == self.ACTION then
+				return player_action[ plr_num ][ column ]
+			end
+		end
+		function input_handler:GetAll(enum_type, plr_num)
+			if enum_type == self.PLAYER then
+				return unpack(player_input[ plr_num ])
+			elseif enum_type == self.ACTION then
+				return unpack(player_action[ plr_num ])
+			end
+		end
+
+		-- Functions (Accessed) --
+		local hooks = {}
         hooks[ input_handler.PLAYER ] = {
             [ input_handler.TYPE_STEP ] = {},
             [ input_handler.TYPE_PRESS ] = {},
@@ -87,63 +80,85 @@
         }
         hooks[ input_handler.GLOBAL ] = {}
 
-        local is_oitg = config.minimum_build == 'OpenITG'
-        
-        if not is_oitg then
-            local function broadcast( btn_type, inp_type, btn, plr )
-                for id, func in pairs( hooks[ btn_type ][ inp_type ] ) do func( btn , plr ) end
+		function input_handler:OnInput(listen_type, listen_id, func)
+			hooks[ self.PLAYER ][ listen_type ][ listen_id ] = func
+			return function() hooks[ self.PLAYER ][ listen_type ][ listen_id ] = nil end
+		end
+		function input_handler:OnAction(listen_type, listen_id, func)
+			hooks[ self.ACTION ][ listen_type ][ listen_id ] = func
+			return function() hooks[ self.ACTION ][ listen_type ][ listen_id ] = nil end
+		end
+		function input_handler:OnGlobal(listen_id, func)
+			hooks[ self.GLOBAL ][ listen_id ] = func
+			return function() hooks[ self.GLOBAL ][ listen_id ] = nil end
+		end
+
+		input_handler.__newindex = function() end
+		setmetatable(input_handler, input_handler)
+
+		-- NotITG Update Handler --
+		do	
+            local function BroadcastInput( btn_type, input_type, btn, plr )
+                for id, func in pairs( hooks[ btn_type ][ input_type ] ) do func( btn , plr ) end
             end
 
             update_hooks{ 'input handler', function()
                 if disabled then return end
-                
-                for pn=1,2 do
-                    local input = player_input[pn]
-                    local hinput = player_hinput[pn]
-                    for col=1,4 do
-                        if input[col] then
-                            broadcast( input_handler.PLAYER, input_handler.TYPE_PRESS, col, pn )
-                            if not hinput[col] then
-                                broadcast( input_handler.PLAYER, input_handler.TYPE_STEP, col, pn )
-                                hinput[col] = true
-                            end
-                        else
-                            if hinput[col] then
-                                broadcast( input_handler.PLAYER, input_handler.TYPE_LIFT, col, pn )
-                                hinput[col] = false
-                            end
-                        end
-                    end
 
-                    local action = player_action[pn]
-                    local haction = player_haction[pn]
-                    for btn=1,8 do
-                        if action[col] then
-                            broadcast( input_handler.ACTION, input_handler.TYPE_PRESS, col, pn )
-                            if not haction[col] then
-                                broadcast( input_handler.ACTION, input_handler.TYPE_STEP, col, pn )
-                                haction[col] = true
-                            end
-                        else
-                            if haction[col] then
-                                broadcast( input_handler.ACTION, input_handler.TYPE_LIFT, col, pn )
-                                haction[col] = false
-                            end
-                        end
-                    end
-                end
+				for pn=1,2 do
+					if global_input[pn] then
+						for id, func in pairs( hooks[ input_handler.GLOBAL ] ) do func( pn ) end
+						global_input[pn] = false
+					end
+
+					if not IS_OITG then
+						local input = player_input[pn]
+						local hinput = player_hinput[pn]
+						for col=1,4 do
+							if input[col] then
+								BroadcastInput( input_handler.PLAYER, input_handler.TYPE_PRESS, col, pn )
+								if not hinput[col] then
+									BroadcastInput( input_handler.PLAYER, input_handler.TYPE_STEP, col, pn )
+									hinput[col] = true
+								end
+							else
+								if hinput[col] then
+									BroadcastInput( input_handler.PLAYER, input_handler.TYPE_LIFT, col, pn )
+									hinput[col] = false
+								end
+							end
+						end
+
+						local action = player_action[pn]
+						local haction = player_haction[pn]
+						for btn=1,8 do
+							if action[col] then
+								BroadcastInput( input_handler.ACTION, input_handler.TYPE_PRESS, col, pn )
+								if not haction[col] then
+									BroadcastInput( input_handler.ACTION, input_handler.TYPE_STEP, col, pn )
+									haction[col] = true
+								end
+							else
+								if haction[col] then
+									BroadcastInput( input_handler.ACTION, input_handler.TYPE_LIFT, col, pn )
+									haction[col] = false
+								end
+							end
+						end
+					end
+				end
             end }
-        end
+		end
 
+		-- MessageCommand Insertion --
         do
             local dir = {'Left','Down','Up','Right'}
             for _pn=1,2 do
                 local pn = _pn
-                self:addcommand('StepP'..pn..'Message',function()
-                    for id,func in pairs( hooks[ input_handler.GLOBAL ] ) do func( pn ) end
-                end)
-                if not is_oitg then
 
+                self:addcommand('StepP'..pn..'Message',function() global_input[pn] = true end)
+
+                if not IS_OITG then
                     for _col=1,4 do
                         local col = _col
                         self:addcommand('StepP'..pn..dir[col]..'PressMessage',function() player_input[pn][col] = true; end)
@@ -154,10 +169,11 @@
                         self:addcommand('StepP'..pn..'Action'..act..'PressMessage',function() player_action[pn][act] = true; end)
                         self:addcommand('StepP'..pn..'Action'..act..'LiftMessage',function() player_action[pn][act] = false; end)
                     end
-
                 end
             end
         end
 
+		-- Shorthand
+		IH = input_handler
     end)"
 />,
