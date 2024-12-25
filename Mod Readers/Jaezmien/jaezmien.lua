@@ -32,7 +32,7 @@ local ease_funcs = {}
 local funcs = {}
 
 local _recalc_mods = {
-	['dark'] = function(v) return 50 + (v / 100) * 50 end,
+	['dark'] = function(v) return v == 0 and 0 or (50 + (v / 100) * 50) end,
 	['reverse'] = function(v) return v == 100 and 99.99 or v end,
 	['confusionoffset'] = function(v) return v * math.pi / 1.8 end,
 	['confusionxoffset'] = function(v) return v * math.pi / 1.8 end,
