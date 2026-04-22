@@ -3,177 +3,197 @@
     InitCommand="%melody(function(self)
         if self:getaux()==1 then return end; self:aux(1); -- initcommand bs
 
+		local h = {}
+
         local IS_OITG = config.minimum_build == 'OpenITG'
 
-		-- Tables
-		local global_input = {false, false}
-        local player_input = {{},{}}; local player_hinput = {{},{}}
-        local player_action = {{},{}}; local player_haction = {{},{}}
-        for pn = 1, 2 do
-            for col = 1, 4 do
-                player_input[pn][col] = false; player_hinput[pn][col] = false
-            end
-            for act = 1, 8 do
-                player_action[pn][act] = false; player_haction[pn][act] = false
-            end
-        end
+		-- XXX: not sure if i should make this a function so that we can apply duplicated input
+		-- mid-file but i think just one call to this is enough
+		local IS_DUPLICATED = PREFSMAN:GetPreference('InputDuplication')
 
-		input_handler = {}
+		local function isPlayerActive(pn) return GAMESTATE:IsPlayerEnabled(pn-1) and GAMESTATE:IsHumanPlayer(pn-1) end
+		local function getAlternatePlayer(pn) return pn == 1 and 2 or 1 end
 
-		-- Globals --
-		do
-			input_handler.PLAYER_LEFT  = 1
-			input_handler.PLAYER_DOWN  = 2
-			input_handler.PLAYER_UP    = 3
-			input_handler.PLAYER_RIGHT = 4
+		-- XXX: on 2p setup, this should be false
+		-- otherwise, this is the active player number
+		h.SINGLEPLAYER = false
+		if     isPlayerActive(1) and not isPlayerActive(2) then h.SINGLEPLAYER = 1
+		elseif not isPlayerActive(1) and isPlayerActive(2) then h.SINGLEPLAYER = 2 end
 
-			input_handler.ACTION_1 = 1
-			input_handler.ACTION_2 = 2
-			input_handler.ACTION_3 = 3
-			input_handler.ACTION_4 = 4
-			input_handler.ACTION_5 = 5
-			input_handler.ACTION_6 = 6
-			input_handler.ACTION_7 = 7
-			input_handler.ACTION_8 = 8
+		-- globals
+		h.PLAYER_LEFT  = 1
+		h.PLAYER_DOWN  = 2
+		h.PLAYER_UP    = 3
+		h.PLAYER_RIGHT = 4
 
-			input_handler.TYPE_STEP  = 0
-			input_handler.TYPE_PRESS = 1
-			input_handler.TYPE_LIFT  = 2
+		h.ACTION_1 = 1
+		h.ACTION_2 = 2
+		h.ACTION_3 = 3
+		h.ACTION_4 = 4
+		h.ACTION_5 = 5
+		h.ACTION_6 = 6
+		h.ACTION_7 = 7
+		h.ACTION_8 = 8
 
-			input_handler.PLAYER = 0
-			input_handler.ACTION = 1
-			input_handler.GLOBAL = 2
+		h.TYPE_STEP  = 0 -- runs once
+		h.TYPE_PRESS = 1 -- runs continuously
+		h.TYPE_LIFT  = 2 -- runs once
+
+		h.MODE_PLAYER = 0
+		h.MODE_ACTION = 1
+		h.MODE_GLOBAL = 2
+
+		-- raw data
+		local raw = {}
+		raw.global = {}
+		raw.input  = {}
+		raw.action = {}
+		raw.hinput  = {} -- held
+		raw.haction = {} -- held
+
+		for pn=1,2 do
+			raw.global[pn] = false
+
+			raw.input[pn]  = {}
+			raw.hinput[pn] = {}
+			for col=1,4 do raw.input[pn][col] = false; raw.hinput[pn][col] = false; end
+
+			raw.action[pn]  = {}
+			raw.haction[pn] = {}
+			for act=1,7 do raw.action[pn][act] = false; raw.haction[pn][act] = false; end
 		end
 
-		-- Functions (Internal) --
+		function h:GetRawInput(listenType, pn, col)
+			if listenType == h.MODE_PLAYER then
+				local i = raw.input[ pn ]
+				return (col and i[col] or i)
+			end
+
+			if listenType == h.MODE_ACTION then
+				local i = raw.action[ pn ]
+				return (col and i[col] or i)
+			end
+
+			return nil
+		end
+
+		-- funcs
 		local disabled = false
-		function input_handler:Disabled(disable)
-			disabled = disable or false
-		end
+		function h:Disable(v) disabled = (v == true) end
 
-		function input_handler:Get(enum_type, plr_num, column)
-			if enum_type == self.PLAYER then
-				return player_input[ plr_num ][ column ]
-			elseif enum_type == self.ACTION then
-				return player_action[ plr_num ][ column ]
-			end
-		end
-		function input_handler:GetAll(enum_type, plr_num)
-			if enum_type == self.PLAYER then
-				return unpack(player_input[ plr_num ])
-			elseif enum_type == self.ACTION then
-				return unpack(player_action[ plr_num ])
-			end
-		end
-
-		-- Functions (Accessed) --
+		-- hooks
 		local hooks = {}
-        hooks[ input_handler.PLAYER ] = {
-            [ input_handler.TYPE_STEP ] = {},
-            [ input_handler.TYPE_PRESS ] = {},
-            [ input_handler.TYPE_LIFT ] = {},
-        }
-        hooks[ input_handler.ACTION ] = {
-            [ input_handler.TYPE_STEP ] = {},
-            [ input_handler.TYPE_PRESS ] = {},
-            [ input_handler.TYPE_LIFT ] = {},
-        }
-        hooks[ input_handler.GLOBAL ] = {}
+		hooks[ h.MODE_PLAYER ] = { [ h.TYPE_STEP ] = {}, [ h.TYPE_PRESS ] = {}, [ h.TYPE_LIFT ] = {}, }
+		hooks[ h.MODE_ACTION ] = { [ h.TYPE_STEP ] = {}, [ h.TYPE_PRESS ] = {}, [ h.TYPE_LIFT ] = {}, }
+		hooks[ h.MODE_GLOBAL ] = {}
 
-		function input_handler:OnInput(listen_type, listen_id, func)
-			hooks[ self.PLAYER ][ listen_type ][ listen_id ] = func
-			return function() hooks[ self.PLAYER ][ listen_type ][ listen_id ] = nil end
+		function h:OnInput(listenType, listenId, func)
+			hooks[ self.MODE_PLAYER ][ listenType ][ listenId ] = func
+			return function() hooks[ self.MODE_PLAYER ][ listenType ][ listenId ] = nil end
 		end
-		function input_handler:OnAction(listen_type, listen_id, func)
-			hooks[ self.ACTION ][ listen_type ][ listen_id ] = func
-			return function() hooks[ self.ACTION ][ listen_type ][ listen_id ] = nil end
+		function h:OnAction(listenType, listenId, func)
+			hooks[ self.MODE_ACTION ][ listenType ][ listenId ] = func
+			return function() hooks[ self.MODE_ACTION ][ listenType ][ listenId ] = nil end
 		end
-		function input_handler:OnGlobal(listen_id, func)
-			hooks[ self.GLOBAL ][ listen_id ] = func
-			return function() hooks[ self.GLOBAL ][ listen_id ] = nil end
+		function h:OnGlobal(listenId, func)
+			hooks[ self.MODE_GLOBAL ][ listenId ] = func
+			return function() hooks[ self.MODE_GLOBAL ][ listenId ] = nil end
 		end
 
-		input_handler.__newindex = function() end
-		setmetatable(input_handler, input_handler)
+		-- updates
+		local function handleGlobalInput(pn)
+			if not raw.global[pn] then return end
 
-		-- NotITG Update Handler --
-		do	
-            local function BroadcastInput( btn_type, input_type, btn, plr )
-                for id, func in pairs( hooks[ btn_type ][ input_type ] ) do func( btn , plr ) end
-            end
+			for _, func in pairs( hooks[ h.MODE_GLOBAL ] ) do
+				func( pn )
+				if IS_DUPLICATED then func( getAlternatePlayer(pn) ) end
+			end
 
-            update_hooks{ 'input handler', function()
-                if disabled then return end
+			raw.global[pn] = false
+		end
 
-				for pn=1,2 do
-					if global_input[pn] then
-						for id, func in pairs( hooks[ input_handler.GLOBAL ] ) do func( pn ) end
-						global_input[pn] = false
+		local function broadcastInput(listenMode, listenType, col, pn)
+			for _, func in pairs( hooks[ listenMode ][ listenType ] ) do
+				func( col, pn )
+				if IS_DUPLICATED then func( col, getAlternatePlayer(pn) ) end
+			end
+		end
+
+		local function handleColumnInput(pn)
+			local _i = raw.input[pn]
+			local _hi = raw.hinput[pn]
+
+			for col=1,4 do
+				if _i[col] then
+					broadcastInput( h.MODE_PLAYER, h.TYPE_PRESS, col, pn )
+
+					if not _hi[col] then
+						broadcastInput( h.MODE_PLAYER, h.TYPE_STEP, col, pn )
+						_hi[col] = true
 					end
-
-					if not IS_OITG then
-						local input = player_input[pn]
-						local hinput = player_hinput[pn]
-						for col=1,4 do
-							if input[col] then
-								BroadcastInput( input_handler.PLAYER, input_handler.TYPE_PRESS, col, pn )
-								if not hinput[col] then
-									BroadcastInput( input_handler.PLAYER, input_handler.TYPE_STEP, col, pn )
-									hinput[col] = true
-								end
-							else
-								if hinput[col] then
-									BroadcastInput( input_handler.PLAYER, input_handler.TYPE_LIFT, col, pn )
-									hinput[col] = false
-								end
-							end
-						end
-
-						local action = player_action[pn]
-						local haction = player_haction[pn]
-						for btn=1,8 do
-							if action[col] then
-								BroadcastInput( input_handler.ACTION, input_handler.TYPE_PRESS, col, pn )
-								if not haction[col] then
-									BroadcastInput( input_handler.ACTION, input_handler.TYPE_STEP, col, pn )
-									haction[col] = true
-								end
-							else
-								if haction[col] then
-									BroadcastInput( input_handler.ACTION, input_handler.TYPE_LIFT, col, pn )
-									haction[col] = false
-								end
-							end
-						end
+				else
+					if  _hi[col] then
+						broadcastInput( h.MODE_PLAYER, h.TYPE_LIFT, col, pn )
+						_hi[col] = false
 					end
 				end
-            end }
+			end
+		end
+		local function handleActionInput(pn)
+			local _a = raw.action[pn]
+			local _ha = raw.haction[pn]
+
+			for act=1,8 do
+				if _a[act] then
+					broadcastInput( h.MODE_ACTION, h.TYPE_PRESS, act, pn )
+
+					if not _ha[act] then
+						broadcastInput( h.MODE_ACTION, h.TYPE_STEP, act, pn )
+						_ha[act] = true
+					end
+				else
+					if  _ha[act] then
+						broadcastInput( h.MODE_ACTION, h.TYPE_LIFT, act, pn )
+						_ha[act] = false
+					end
+				end
+			end
+		end
+		update_hooks{'input handler', function()
+			if disabled then return end
+
+			for pn=1,2 do
+				handleGlobalInput(pn)
+
+				if not IS_OITG then
+					handleColumnInput(pn)
+					handleActionInput(pn)
+				end
+			end
+		end}
+
+		-- messagecommand
+		local dir = {'Left','Down','Up','Right'}
+		for pn=1,2 do
+			local pn = pn
+
+			self:addcommand('StepP'..pn..'Message',function() raw.global[pn] = true end)
+
+			if not IS_OITG then
+				for col=1,4 do
+					local col = col
+					self:addcommand('StepP'..pn..dir[col]..'PressMessage',function() raw.input[pn][col] = true; end)
+					self:addcommand('StepP'..pn..dir[col]..'LiftMessage',function() raw.input[pn][col] = false; end)
+				end
+				for act=1,8 do
+					local act = act
+					self:addcommand('StepP'..pn..'Action'..act..'PressMessage',function() raw.action[pn][act] = true; end)
+					self:addcommand('StepP'..pn..'Action'..act..'LiftMessage',function() raw.action[pn][act] = false; end)
+				end
+			end
 		end
 
-		-- MessageCommand Insertion --
-        do
-            local dir = {'Left','Down','Up','Right'}
-            for _pn=1,2 do
-                local pn = _pn
-
-                self:addcommand('StepP'..pn..'Message',function() global_input[pn] = true end)
-
-                if not IS_OITG then
-                    for _col=1,4 do
-                        local col = _col
-                        self:addcommand('StepP'..pn..dir[col]..'PressMessage',function() player_input[pn][col] = true; end)
-                        self:addcommand('StepP'..pn..dir[col]..'LiftMessage',function() player_input[pn][col] = false; end)
-                    end
-                    for _act=1,8 do
-                        local act = _act
-                        self:addcommand('StepP'..pn..'Action'..act..'PressMessage',function() player_action[pn][act] = true; end)
-                        self:addcommand('StepP'..pn..'Action'..act..'LiftMessage',function() player_action[pn][act] = false; end)
-                    end
-                end
-            end
-        end
-
-		-- Shorthand
-		IH = input_handler
+		-- shorthand
+		IH = h
     end)"
 />,
