@@ -284,6 +284,28 @@ if not OPENITG then
 	{'centered2', 'centeredpath'}
 end
 
+reader.aux = setmetatable(
+	{},
+	{
+		__newindex = noop,
+		__call = function(t, args)
+			if type(args) ~= 'table' then print("[Mods] Invalid aux all, ignoring...") return t; end
+
+			if type(args[ 1 ]) == 'string' then
+				redirs[args[1]] = noop
+				return args[1]
+			end
+
+			return {
+				_value = args[ 1 ] or 0,
+				aux = function(self, v) self._value = v end,
+				getaux = function(self) return self._value end,
+				addaux = function(self, v) self._value = self._value + v end,
+			}
+		end
+	}
+)
+
 reader.ease = {}
 setmetatable(
 	reader.ease,
@@ -404,7 +426,9 @@ setmetatable(
 			el.beat_length = args[2] > args[1] and args[2] - args[1] or args[2]
 
 			el.range = { args[3], args[4] }
-			el.func = args[5]
+			el.func = (type(args[5]) == 'table' and args[5].aux) and
+				function(v) args[5]:aux(v) end
+				or args[5]
 			el.ease = args[6] or linear
 
 			table.insert( ease_funcs, el )
